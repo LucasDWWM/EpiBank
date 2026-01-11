@@ -1,0 +1,35 @@
+# --- SYSTÈME & IDE ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.log
+
+# --- JAVA (Frontend) ---
+# On ne veut pas versionner le bytecode (.class)
+*.class
+# Si plus tard tu fais du Maven/Gradle
+target/
+build/
+*.jar
+
+# --- COBOL (Backend) ---
+# TRÈS IMPORTANT : On ne versionne jamais les exécutables (.exe)
+*.exe
+*.dll
+*.so
+# Fichiers intermédiaires de compilation COBOL
+*.o
+*.obj
+*.lst
+*.i
+
+# --- DATA (Fichiers d'échange) ---
+# On ignore les fichiers qui changent à chaque test
+data/input.txt
+data/output.txt
+
+# On ignorera plus tard la "base de données" binaire du COBOL
+data/*.dat
+data/*.idx
