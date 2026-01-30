@@ -4,53 +4,90 @@ PROGRAM-ID. TRAITEMENT-BANQUE.
 ENVIRONMENT DIVISION.
 INPUT-OUTPUT SECTION.
 FILE-CONTROL.
-    *> On lie le fichier physique "input.txt" à la variable interne FICHIER-ENTREE
+    *> ENTREE : On garde LINE SEQUENTIAL car Java envoie du texte
     SELECT FICHIER-ENTREE ASSIGN TO "../data/input.txt"
     ORGANIZATION IS LINE SEQUENTIAL.
 
-    *> On lie le fichier physique "output.txt" à la variable interne FICHIER-SORTIE
-    SELECT FICHIER-SORTIE ASSIGN TO "../data/output.txt"
-    ORGANIZATION IS LINE SEQUENTIAL.
+    *> SORTIE : CORRECTION ICI ! 
+    *> 1. Pas de "../data/", juste le nom du fichier
+    *> 2. Pas de "LINE", juste SEQUENTIAL
+    SELECT FICHIER-SORTIE ASSIGN TO "reponse.txt"
+    ORGANIZATION IS SEQUENTIAL.
+
+    *> BASE DE DONNEES
+    SELECT FICHIER-CLIENTS ASSIGN TO "../data/clients.dat"
+    ORGANIZATION IS INDEXED
+    ACCESS MODE IS RANDOM
+    RECORD KEY IS DB-ID.
 
 DATA DIVISION.
 FILE SECTION.
-*> Définition de la structure du fichier d'entrée
 FD FICHIER-ENTREE.
-01 LIGNE-ENTREE    PIC X(50).
+01 LIGNE-BRUTE      PIC X(50).
 
-*> Définition de la structure du fichier de sortie
 FD FICHIER-SORTIE.
-01 LIGNE-SORTIE    PIC X(50).
+01 LIGNE-REPONSE    PIC X(100).
+
+FD FICHIER-CLIENTS.
+01 DB-CLIENT.
+    05 DB-ID        PIC X(10).
+    05 DB-NOM       PIC X(20).
+    05 DB-SOLDE     PIC 9(10)V99.
 
 WORKING-STORAGE SECTION.
-01 MESSAGE-FINAL   PIC X(50).
-01 WS-EOF          PIC A(1). 
+01 WS-OPERATION     PIC X(10).
+01 WS-ID-COMPTE     PIC X(10).
+01 WS-MONTANT-TXT   PIC X(10).
+01 WS-MONTANT-NUM   PIC 9(5)V99.
+
+01 WS-SOLDE-FORMAT  PIC Z(9)9.99.
+01 WS-EOF           PIC A(1). 
 
 PROCEDURE DIVISION.
 MAIN-PROCEDURE.
-    *> 1. Ouverture des fichiers
     OPEN INPUT FICHIER-ENTREE.
     OPEN OUTPUT FICHIER-SORTIE.
+    OPEN I-O FICHIER-CLIENTS.
 
-    *> 2. Lecture du fichier d'entrée
-    READ FICHIER-ENTREE INTO LIGNE-ENTREE
+    READ FICHIER-ENTREE INTO LIGNE-BRUTE
         AT END MOVE 'Y' TO WS-EOF
     END-READ.
 
-    *> 3. Traitement 
-    DISPLAY "COBOL: J'ai recu -> " LIGNE-ENTREE.
-    STRING "BONJOUR " DELIMITED BY SIZE
-           LIGNE-ENTREE DELIMITED BY SPACE
-           ", TRAITEMENT OK." DELIMITED BY SIZE
-           INTO MESSAGE-FINAL.
+    UNSTRING LIGNE-BRUTE DELIMITED BY ";"
+        INTO WS-OPERATION
+             WS-ID-COMPTE
+             WS-MONTANT-TXT
+    END-UNSTRING.
 
-    *> 4. Écriture de la réponse
-    WRITE LIGNE-SORTIE FROM MESSAGE-FINAL.
+    COMPUTE WS-MONTANT-NUM = FUNCTION NUMVAL(WS-MONTANT-TXT).
+    MOVE WS-ID-COMPTE TO DB-ID.
+    
+    READ FICHIER-CLIENTS
+        INVALID KEY
+            STRING "ERREUR: COMPTE INTROUVABLE" DELIMITED BY SIZE
+                   INTO LIGNE-REPONSE
+        NOT INVALID KEY
+            IF WS-OPERATION = "DEPOT"
+                ADD WS-MONTANT-NUM TO DB-SOLDE
+            END-IF
+            
+            IF WS-OPERATION = "RETRAIT"
+                SUBTRACT WS-MONTANT-NUM FROM DB-SOLDE
+            END-IF
 
-    *> 5. Fermeture
+            REWRITE DB-CLIENT
+            END-REWRITE
+
+            MOVE DB-SOLDE TO WS-SOLDE-FORMAT
+            STRING "OK;NOUVEAU SOLDE: " DELIMITED BY SIZE
+                   WS-SOLDE-FORMAT DELIMITED BY SIZE
+                   INTO LIGNE-REPONSE
+    END-READ.
+
+    WRITE LIGNE-REPONSE.
+
     CLOSE FICHIER-ENTREE.
     CLOSE FICHIER-SORTIE.
+    CLOSE FICHIER-CLIENTS.
 
     STOP RUN.
-
-    
